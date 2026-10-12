@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ラーメン帳">
+<meta name="theme-color" content="#7a5038">
+<title>ラーメン帳</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root{
+  --bg:#f6f4f1; --surface:#fff; --text:#1a1a1a; --muted:#6b6b6b; --line:#e3dfda;
+  --accent:#7a5038; --accent-weak:#efe6dd; --on-accent:#fff; --cand:#8a8a8a;
+  --tab-h:58px; --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#121212; --surface:#1e1e1e; --text:#f1f1f1; --muted:#a3a3a3; --line:#333; --accent:#c9a184; --accent-weak:#2e2620; --on-accent:#1c1612; --cand:#8f8f8f;}
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;font-size:16px;overscroll-behavior:none}
+button{font:inherit;color:inherit;cursor:pointer}
+input,textarea,select{font:inherit;font-size:16px;color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+textarea{min-height:90px;resize:vertical}
+.hidden{display:none!important}
+
+/* views */
+.view{position:fixed;left:0;right:0;top:0;bottom:calc(var(--tab-h) + var(--safe-b))}
+#map{position:absolute;inset:0}
+
+/* tab bar */
+.tabbar{position:fixed;left:0;right:0;bottom:0;height:calc(var(--tab-h) + var(--safe-b));padding-bottom:var(--safe-b);
+  display:flex;background:var(--surface);border-top:1px solid var(--line);z-index:1000}
+.tabbar button{flex:1;border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--muted)}
+.tabbar button .i{width:25px;height:25px}
+.tabbar button .i.f,.tabbar button.active .i.r{display:none}
+.tabbar button.active .i.f{display:block}
+.tabbar button.active{color:var(--accent);font-weight:600}
+
+/* map overlay */
+.searchbar{position:absolute;z-index:500;left:12px;right:12px;top:calc(var(--safe-t) + 10px);display:flex;gap:8px}
+.searchbar input{box-shadow:0 2px 10px rgba(0,0,0,.15);border:0}
+.i{width:1.2em;height:1.2em;fill:currentColor;flex:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:10px;padding:10px 14px;background:var(--accent);color:var(--on-accent);font-weight:600;white-space:nowrap}
+.btn.icon{padding:8px 10px}
+.btn.icon .i{width:22px;height:22px}
+.btn.sub{background:var(--surface);color:var(--text);border:1px solid var(--line)}
+.btn.danger{background:none;color:var(--accent);border:1px solid var(--accent)}
+.btn.block{width:100%;padding:13px}
+.results{position:absolute;z-index:510;left:12px;right:12px;top:calc(var(--safe-t) + 62px);max-height:50%;overflow:auto;
+  background:var(--surface);border-radius:12px;box-shadow:0 4px 18px rgba(0,0,0,.2)}
+.results .item{padding:11px 14px;border-bottom:1px solid var(--line)}
+.results .item:last-child{border-bottom:0}
+.results .item b{display:block}
+.results .item small{color:var(--muted)}
+.results .foot{padding:10px 14px;display:flex;gap:8px;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted)}
+.fabs{position:absolute;z-index:500;right:12px;bottom:16px;display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.fab{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:24px;padding:12px 16px;background:var(--surface);color:var(--text);box-shadow:0 2px 10px rgba(0,0,0,.2);font-weight:600;font-size:14px}
+.fab.primary{background:var(--accent);color:var(--on-accent)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--tab-h) + var(--safe-b) + 80px);z-index:3000;
+  background:rgba(30,30,30,.92);color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;max-width:86%;text-align:center}
+
+/* markers */
+.pin{display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.4);font-size:15px}
+.pin{position:relative}
+.pin.visited{width:40px;height:40px;background:#fdf6ec url(face.svg) center 55%/32px no-repeat;border:2px solid #7a5038;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.pin.cand{width:26px;height:26px;background:var(--cand);color:#fff;opacity:.92}
+.pin.cand .i{width:14px;height:14px}
+.pin .cnt{position:absolute;right:-6px;top:-6px;background:#fff;color:#7a5038;font-size:11px;font-weight:700;border-radius:9px;padding:0 5px;border:1px solid #7a5038}
+.leaflet-popup-content{margin:12px 14px;font-size:14px;min-width:190px}
+.leaflet-popup-content b{font-size:15px}
+.leaflet-popup-content .btn{margin-top:8px;width:100%;padding:8px}
+.pop-addr{color:#666;font-size:12px;margin-top:2px}
+
+/* list */
+#listView{overflow:auto;-webkit-overflow-scrolling:touch;padding:calc(var(--safe-t) + 12px) 14px 20px}
+.listhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.listhead h1{font-size:22px;margin:0}
+.stats{color:var(--muted);font-size:13px;margin-bottom:10px}
+.controls{display:flex;gap:8px;margin-bottom:14px}
+.controls select{width:auto;flex:0 0 auto}
+.cards{display:grid;gap:12px;grid-template-columns:1fr}
+@media (min-width:640px){.cards{grid-template-columns:1fr 1fr}}
+.card{background:var(--surface);border-radius:14px;overflow:hidden;border:1px solid var(--line);display:flex;flex-direction:column}
+.card .thumb{aspect-ratio:16/9;background:var(--accent-weak) center/cover no-repeat;display:flex;align-items:center;justify-content:center}
+.thumb-mascot{height:112px;width:auto;image-rendering:pixelated}
+.empty-mascot{height:84px;image-rendering:pixelated;margin-bottom:10px}
+.face-mini{width:20px;height:20px;vertical-align:-4px;margin-right:4px}
+.card .body{padding:12px 14px 14px}
+.card .name{font-weight:700;font-size:17px}
+.card .area{color:var(--muted);font-size:12px;margin-top:2px}
+.card .meta{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.chip{font-size:12px;padding:3px 9px;border-radius:12px;background:var(--accent-weak);color:var(--accent);font-weight:600}
+.chip.gray{background:var(--bg);color:var(--muted)}
+.card .dish,.visit .vd{display:flex;align-items:flex-start;gap:6px}
+.card .dish .i,.visit .vd .i{margin-top:1px;color:var(--accent)}
+.card .dish{margin-top:8px;font-size:14px}
+.card .memo{margin-top:6px;font-size:13px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.empty{text-align:center;color:var(--muted);padding:50px 20px;line-height:1.8}
+
+/* sheet */
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:2000}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:92%;z-index:2001;background:var(--bg);border-radius:18px 18px 0 0;
+  display:flex;flex-direction:column;padding-bottom:var(--safe-b);max-width:720px;margin:0 auto}
+.sheet header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
+.sheet header h2{font-size:17px;margin:0;flex:1;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sheet header button{border:0;background:none;color:var(--accent);font-weight:600;min-width:64px;padding:6px}
+.sheet .content{overflow:auto;padding:14px;-webkit-overflow-scrolling:touch}
+/* 詳細カード：画面中央に浮かぶカードとしてポップ表示 */
+.popwrap{position:fixed;z-index:2001;top:calc(var(--safe-t) + 16px);bottom:calc(var(--safe-b) + 16px);left:12px;right:12px;
+  display:flex;align-items:center;justify-content:center;pointer-events:none}
+.sheet.pop{position:relative;left:auto;right:auto;bottom:auto;width:100%;max-height:100%;border-radius:20px;padding-bottom:0;
+  pointer-events:auto;box-shadow:0 14px 44px rgba(0,0,0,.35);will-change:transform,opacity}
+.sheet header .mascot{width:64px;display:flex;justify-content:flex-end}
+.sheet header .mascot img{height:44px;width:auto;image-rendering:pixelated;margin:-8px 2px -6px 0;transform-origin:50% 100%}
+.closing{pointer-events:none}
+.closing *{pointer-events:none!important}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:600}
+.photos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.photos .ph{position:relative;aspect-ratio:1;border-radius:8px;background:#ccc center/cover no-repeat}
+.photos .ph .x{position:absolute;right:3px;top:3px;width:26px;height:26px;border-radius:13px;border:0;background:rgba(0,0,0,.6);color:#fff;padding:0;display:flex;align-items:center;justify-content:center}
+.photos .ph .x .i{width:14px;height:14px}
+.photos .add{aspect-ratio:1;border-radius:8px;border:2px dashed var(--line);display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;font-size:12px;color:var(--muted);background:var(--surface)}
+.photos .add .i{width:26px;height:26px}
+.dhead{margin-bottom:14px}
+.dhead .name{font-size:21px;font-weight:700}
+.dhead .addr{color:var(--muted);font-size:13px;margin-top:3px}
+.dhead .meta{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.row{display:flex;gap:8px;margin:12px 0}
+.row .btn{flex:1}
+.visit{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.visit .vh{display:flex;justify-content:space-between;align-items:center}
+.visit .vh b{font-size:15px}
+.visit .vh button{border:0;background:none;color:var(--accent);font-size:14px;padding:4px}
+.visit .vd{margin-top:6px;font-size:15px}
+.visit .vm{margin-top:6px;font-size:14px;color:var(--muted);white-space:pre-wrap}
+.visit .photos{margin-top:8px}
+.sec{font-size:13px;font-weight:700;color:var(--muted);margin:18px 0 8px}
+.viewer{position:fixed;inset:0;z-index:4000;background:#000;display:flex;align-items:center;justify-content:center}
+.viewer img{max-width:100%;max-height:100%}
+.menu .btn{margin-bottom:10px}
+.note{font-size:13px;color:var(--muted);line-height:1.7}
+</style>
+</head>
+<body>
+<!-- アイコン: Phosphor Icons (MIT) https://phosphoricons.com -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-bowl-steam" viewBox="0 0 256 256"><path d="M224,112H32a8,8,0,0,0-8,8,104.35,104.35,0,0,0,56,92.28V216a16,16,0,0,0,16,16h64a16,16,0,0,0,16-16v-3.72A104.35,104.35,0,0,0,232,120,8,8,0,0,0,224,112Zm-59.34,88a8,8,0,0,0-4.66,7.27V216H96v-8.71A8,8,0,0,0,91.34,200a88.29,88.29,0,0,1-51-72H215.63A88.29,88.29,0,0,1,164.66,200ZM81.77,55c5.35-6.66,6.67-11.16,6.12-13.14-.42-1.49-2.41-2.26-2.43-2.26A8,8,0,0,1,88,24a8.11,8.11,0,0,1,2.38.36c1,.31,9.91,3.33,12.79,12.76,2.46,8.07-.55,17.45-8.94,27.89-5.35,6.66-6.67,11.16-6.12,13.14.42,1.49,2.37,2.24,2.39,2.25A8,8,0,0,1,88,96a8.11,8.11,0,0,1-2.38-.36c-1-.31-9.91-3.33-12.79-12.76C70.37,74.81,73.38,65.43,81.77,55Zm40,0c5.35-6.66,6.67-11.16,6.12-13.14-.42-1.49-2.41-2.26-2.43-2.26A8,8,0,0,1,128,24a8.11,8.11,0,0,1,2.38.36c1,.31,9.91,3.33,12.79,12.76,2.46,8.07-.55,17.45-8.94,27.89-5.35,6.66-6.67,11.16-6.12,13.14.42,1.49,2.37,2.24,2.39,2.25A8,8,0,0,1,128,96a8.11,8.11,0,0,1-2.38-.36c-1-.31-9.91-3.33-12.79-12.76C110.37,74.81,113.38,65.43,121.77,55Zm40,0c5.35-6.66,6.67-11.16,6.12-13.14-.42-1.49-2.41-2.26-2.43-2.26A8,8,0,0,1,168,24a8.11,8.11,0,0,1,2.38.36c1,.31,9.91,3.33,12.79,12.76,2.46,8.07-.55,17.45-8.94,27.89-5.35,6.66-6.67,11.16-6.12,13.14.42,1.49,2.37,2.24,2.39,2.25A8,8,0,0,1,168,96a8.11,8.11,0,0,1-2.38-.36c-1-.31-9.91-3.33-12.79-12.76C150.37,74.81,153.38,65.43,161.77,55Z"/></symbol>
+  <symbol id="i-bowl-steam-fill" viewBox="0 0 256 256"><path d="M81.77,55c5.35-6.66,6.67-11.16,6.12-13.14-.42-1.49-2.41-2.26-2.43-2.26A8,8,0,0,1,88,24a8.11,8.11,0,0,1,2.38.36c1,.31,9.91,3.33,12.79,12.76,2.46,8.07-.55,17.45-8.94,27.89-5.35,6.66-6.67,11.16-6.12,13.14.42,1.49,2.37,2.24,2.39,2.25A8,8,0,0,1,88,96a8.11,8.11,0,0,1-2.38-.36c-1-.31-9.91-3.33-12.79-12.76C70.37,74.81,73.38,65.43,81.77,55Zm31.06,27.89c2.88,9.43,11.79,12.45,12.79,12.76A8.11,8.11,0,0,0,128,96a8,8,0,0,0,2.5-15.6s-2-.76-2.39-2.25c-.55-2,.77-6.48,6.12-13.14,8.39-10.44,11.4-19.82,8.94-27.89-2.88-9.43-11.78-12.45-12.79-12.76A8.11,8.11,0,0,0,128,24a8,8,0,0,0-2.54,15.59s2,.77,2.43,2.26c.55,2-.77,6.48-6.12,13.14C113.38,65.43,110.37,74.81,112.83,82.88Zm40,0c2.88,9.43,11.79,12.45,12.79,12.76A8.11,8.11,0,0,0,168,96a8,8,0,0,0,2.5-15.6s-2-.76-2.39-2.25c-.55-2,.77-6.48,6.12-13.14,8.39-10.44,11.4-19.82,8.94-27.89-2.88-9.43-11.78-12.45-12.79-12.76A8.11,8.11,0,0,0,168,24a8,8,0,0,0-2.54,15.59s2,.77,2.43,2.26c.55,2-.77,6.48-6.12,13.14C153.38,65.43,150.37,74.81,152.83,82.88ZM224,112H32a8,8,0,0,0-8,8,104.35,104.35,0,0,0,56,92.28V216a16,16,0,0,0,16,16h64a16,16,0,0,0,16-16v-3.72A104.35,104.35,0,0,0,232,120,8,8,0,0,0,224,112Z"/></symbol>
+  <symbol id="i-map-trifold" viewBox="0 0 256 256"><path d="M228.92,49.69a8,8,0,0,0-6.86-1.45L160.93,63.52,99.58,32.84a8,8,0,0,0-5.52-.6l-64,16A8,8,0,0,0,24,56V200a8,8,0,0,0,9.94,7.76l61.13-15.28,61.35,30.68A8.15,8.15,0,0,0,160,224a8,8,0,0,0,1.94-.24l64-16A8,8,0,0,0,232,200V56A8,8,0,0,0,228.92,49.69ZM104,52.94l48,24V203.06l-48-24ZM40,62.25l48-12v127.5l-48,12Zm176,131.5-48,12V78.25l48-12Z"/></symbol>
+  <symbol id="i-map-trifold-fill" viewBox="0 0 256 256"><path d="M228.92,49.69a8,8,0,0,0-6.86-1.45L160.93,63.52,99.58,32.84a8,8,0,0,0-5.52-.6l-64,16A8,8,0,0,0,24,56V200a8,8,0,0,0,9.94,7.76l61.13-15.28,61.35,30.68A8.15,8.15,0,0,0,160,224a8,8,0,0,0,1.94-.24l64-16A8,8,0,0,0,232,200V56A8,8,0,0,0,228.92,49.69ZM96,176a8,8,0,0,0-1.94.24L40,189.75V62.25L95.07,48.48l.93.46Zm120,17.75-55.07,13.77-.93-.46V80a8,8,0,0,0,1.94-.23L216,66.25Z"/></symbol>
+  <symbol id="i-navigation-arrow" viewBox="0 0 256 256"><path d="M237.33,106.21,61.41,41l-.16-.05A16,16,0,0,0,40.9,61.25a1,1,0,0,0,.05.16l65.26,175.92A15.77,15.77,0,0,0,121.28,248h.3a15.77,15.77,0,0,0,15-11.29l.06-.2,21.84-78,78-21.84.2-.06a16,16,0,0,0,.62-30.38ZM149.84,144.3a8,8,0,0,0-5.54,5.54L121.3,232l-.06-.17L56,56l175.82,65.22.16.06Z"/></symbol>
+  <symbol id="i-magnifying-glass" viewBox="0 0 256 256"><path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"/></symbol>
+  <symbol id="i-dots-three" viewBox="0 0 256 256"><path d="M140,128a12,12,0,1,1-12-12A12,12,0,0,1,140,128Zm56-12a12,12,0,1,0,12,12A12,12,0,0,0,196,116ZM60,116a12,12,0,1,0,12,12A12,12,0,0,0,60,116Z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 256 256"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 256 256"><path d="M208,56H180.28L166.65,35.56A8,8,0,0,0,160,32H96a8,8,0,0,0-6.65,3.56L75.71,56H48A24,24,0,0,0,24,80V192a24,24,0,0,0,24,24H208a24,24,0,0,0,24-24V80A24,24,0,0,0,208,56Zm8,136a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V80a8,8,0,0,1,8-8H80a8,8,0,0,0,6.66-3.56L100.28,48h55.43l13.63,20.44A8,8,0,0,0,176,72h32a8,8,0,0,1,8,8ZM128,88a44,44,0,1,0,44,44A44.05,44.05,0,0,0,128,88Zm0,72a28,28,0,1,1,28-28A28,28,0,0,1,128,160Z"/></symbol>
+  <symbol id="i-download-simple" viewBox="0 0 256 256"><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z"/></symbol>
+  <symbol id="i-upload-simple" viewBox="0 0 256 256"><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0ZM93.66,77.66,120,51.31V144a8,8,0,0,0,16,0V51.31l26.34,26.35a8,8,0,0,0,11.32-11.32l-40-40a8,8,0,0,0-11.32,0l-40,40A8,8,0,0,0,93.66,77.66Z"/></symbol>
+  <symbol id="i-bowl-food" viewBox="0 0 256 256"><path d="M224,104h-8.37a88,88,0,0,0-175.26,0H32a8,8,0,0,0-8,8,104.35,104.35,0,0,0,56,92.28V208a16,16,0,0,0,16,16h64a16,16,0,0,0,16-16v-3.72A104.35,104.35,0,0,0,232,112,8,8,0,0,0,224,104Zm-24.46,0H148.12a71.84,71.84,0,0,1,41.27-29.57A71.45,71.45,0,0,1,199.54,104ZM173.48,56.23q2.75,2.25,5.27,4.75a87.92,87.92,0,0,0-49.15,43H100.1A72.26,72.26,0,0,1,168,56C169.83,56,171.66,56.09,173.48,56.23ZM128,40a71.87,71.87,0,0,1,19,2.57A88.36,88.36,0,0,0,83.33,104H56.46A72.08,72.08,0,0,1,128,40Zm36.66,152A8,8,0,0,0,160,199.3V208H96v-8.7A8,8,0,0,0,91.34,192a88.29,88.29,0,0,1-51-72H215.63A88.29,88.29,0,0,1,164.66,192Z"/></symbol>
+</svg>
+
+<!-- マップ -->
+<section id="mapView" class="view">
+  <div id="map"></div>
+  <form class="searchbar" id="searchForm" autocomplete="off">
+    <input id="q" type="search" placeholder="店名・地名で検索" enterkeyhint="search">
+    <button class="btn" type="submit">検索</button>
+  </form>
+  <div class="results hidden" id="results"></div>
+  <div class="fabs">
+    <button class="fab" id="btnLocate"><svg class="i" aria-hidden="true"><use href="#i-navigation-arrow"/></svg>現在地</button>
+    <button class="fab primary" id="btnArea"><svg class="i" aria-hidden="true"><use href="#i-magnifying-glass"/></svg>この周辺のラーメン店</button>
+  </div>
+</section>
+
+<!-- 履歴 -->
+<section id="listView" class="view hidden">
+  <div class="listhead">
+    <h1>来訪履歴</h1>
+    <button class="btn sub icon" id="btnMenu" aria-label="メニュー"><svg class="i" aria-hidden="true"><use href="#i-dots-three"/></svg></button>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="controls">
+    <input id="filter" type="search" placeholder="店名・メニュー・メモで絞り込み">
+    <select id="sort">
+      <option value="last">最近行った順</option>
+      <option value="count">回数が多い順</option>
+      <option value="name">店名順</option>
+    </select>
+  </div>
+  <div class="cards" id="cards"></div>
+</section>
+
+<nav class="tabbar">
+  <button data-tab="mapView" class="active"><svg class="i r" aria-hidden="true"><use href="#i-map-trifold"/></svg><svg class="i f" aria-hidden="true"><use href="#i-map-trifold-fill"/></svg>マップ</button>
+  <button data-tab="listView"><svg class="i r" aria-hidden="true"><use href="#i-bowl-steam"/></svg><svg class="i f" aria-hidden="true"><use href="#i-bowl-steam-fill"/></svg>来訪履歴</button>
+</nav>
+
+<div id="sheetRoot"></div>
+<input type="file" id="fileInput" accept="image/*" multiple class="hidden">
+<input type="file" id="importInput" accept="application/json,.json" class="hidden">
+
+<script>
+'use strict';
+const API = 'https://api.openpoiapi.com/v1';
+const RAMEN_Q = 'ラーメン らーめん 拉麺 中華そば つけ麺 らあめん';
+
+/* ---------- IndexedDB ---------- */
+const DB = {
+  db: null,
+  open() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open('ramen-log', 1);
+      r.onupgradeneeded = () => {
+        const d = r.result;
+        d.createObjectStore('shops', { keyPath: 'id' });
+        d.createObjectStore('photos', { keyPath: 'id' });
+      };
+      r.onsuccess = () => { this.db = r.result; res(); };
+      r.onerror = () => rej(r.error);
+    });
+  },
+  tx(store, mode, fn) {
+    return new Promise((res, rej) => {
+      const t = this.db.transaction(store, mode);
+      const out = fn(t.objectStore(store));
+      t.oncomplete = () => res(out && 'result' in out ? out.result : out);
+      t.onerror = () => rej(t.error);
+    });
+  },
+  all(store) { return this.tx(store, 'readonly', s => s.getAll()); },
+  get(store, id) { return this.tx(store, 'readonly', s => s.get(id)); },
+  put(store, v) { return this.tx(store, 'readwrite', s => { s.put(v); }); },
+  del(store, id) { return this.tx(store, 'readwrite', s => { s.delete(id); }); },
+};
+
+/* ---------- 状態 ---------- */
+let shops = [];               // 来訪済みの店
+const photoUrls = new Map();  // photoId -> objectURL
+let map, visitedLayer, candLayer;
+
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+const fmtDate = s => { if (!s) return '—'; const [y, m, d] = s.split('-'); return `${y}/${+m}/${+d}`; };
+const norm = s => String(s ?? '').normalize('NFKC');
+const poiId = p => `poi:${p.name}@${(+p.lat).toFixed(5)},${(+p.lng).toFixed(5)}`;
+const lastVisit = s => s.visits.reduce((a, v) => (v.date > a ? v.date : a), '');
+const sortedVisits = s => [...s.visits].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
+const findShop = id => shops.find(s => s.id === id);
+
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2400);
+}
+
+async function photoUrl(id) {
+  if (photoUrls.has(id)) return photoUrls.get(id);
+  const rec = await DB.get('photos', id);
+  if (!rec) return '';
+  const url = URL.createObjectURL(rec.blob);
+  photoUrls.set(id, url);
+  return url;
+}
+
+/* 写真を長辺1600pxに縮小してJPEG化 */
+async function resizeImage(file) {
+  const bmp = await createImageBitmap(file);
+  const max = 1600, k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas');
+  c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  bmp.close && bmp.close();
+  return new Promise(r => c.toBlob(r, 'image/jpeg', 0.82));
+}
+
+/* ---------- 地図 ---------- */
+function initMap() {
+  map = L.map('map', { zoomControl: false, tapHold: true }).setView([35.6812, 139.7671], 14);
+  L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a> | 店舗: <a href="https://openpoiapi.com/attribution.html" target="_blank">OpenPOI API</a>',
+  }).addTo(map);
+  candLayer = L.layerGroup().addTo(map);
+  visitedLayer = L.layerGroup().addTo(map);
+
+  // 長押しで手動登録
+  map.on('contextmenu', e => manualAdd(e.latlng));
+
+  const saved = (() => { try { return JSON.parse(localStorage.getItem('lastView')); } catch { return null; } })();
+  if (saved) map.setView([saved.lat, saved.lng], saved.z);
+  else if (shops.length) map.fitBounds(L.latLngBounds(shops.map(s => [s.lat, s.lng])).pad(0.2), { maxZoom: 15 });
+  map.on('moveend', () => {
+    const c = map.getCenter();
+    try { localStorage.setItem('lastView', JSON.stringify({ lat: c.lat, lng: c.lng, z: map.getZoom() })); } catch {}
+  });
+}
+
+function pinIcon(visited, count) {
+  return L.divIcon({
+    className: '',
+    html: visited
+      ? `<div class="pin visited">${count > 1 ? `<span class="cnt">${count}</span>` : ''}</div>`
+      : `<div class="pin cand"><svg class="i" aria-hidden="true"><use href="#i-bowl-steam-fill"/></svg></div>`,
+    iconSize: visited ? [40, 40] : [26, 26],
+    iconAnchor: visited ? [20, 20] : [13, 13],
+    popupAnchor: [0, visited ? -18 : -12],
+  });
+}
+
+function renderVisitedPins() {
+  visitedLayer.clearLayers();
+  for (const s of shops) {
+    const m = L.marker([s.lat, s.lng], { icon: pinIcon(true, s.visits.length), zIndexOffset: 1000 });
+    m.bindPopup(() => {
+      const el = document.createElement('div');
+      el.innerHTML = `<b>${esc(s.name)}</b><div class="pop-addr">${esc(s.address)}</div>
+        <div style="margin-top:6px">最終来訪 ${fmtDate(lastVisit(s))}・${s.visits.length}回</div>
+        <button class="btn">記録を見る</button>`;
+      el.querySelector('button').onclick = e => { map.closePopup(); openDetail(s.id, { x: e.clientX, y: e.clientY }); };
+      return el;
+    });
+    visitedLayer.addLayer(m);
+  }
+}
+
+function showCandidates(list) {
+  candLayer.clearLayers();
+  for (const p of list) {
+    const id = poiId(p);
+    if (findShop(id)) continue; // 来訪済みは赤ピンで表示済み
+    const m = L.marker([p.lat, p.lng], { icon: pinIcon(false) });
+    m.bindPopup(() => candidatePopup(p));
+    m.poiId = id;
+    candLayer.addLayer(m);
+  }
+}
+
+function candidatePopup(p) {
+  const el = document.createElement('div');
+  el.innerHTML = `<b>${esc(norm(p.name))}</b><div class="pop-addr">${esc(norm(p.address))}</div>
+    <button class="btn"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>来訪を記録</button>`;
+  el.querySelector('button').onclick = () => {
+    map.closePopup();
+    openVisitForm({ id: poiId(p), name: norm(p.name), address: norm(p.address), lat: +p.lat, lng: +p.lng, source: 'openpoi' });
+  };
+  return el;
+}
+
+async function apiSearch(params) {
+  const u = new URL(API + '/search');
+  Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
+  const r = await fetch(u);
+  if (r.status === 429) throw new Error('アクセスが混み合っています。少し待ってから再試行してください');
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || '検索に失敗しました');
+  return j.results || [];
+}
+
+const bboxStr = b => [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map(n => n.toFixed(6)).join(',');
+
+async function searchArea() {
+  if (map.getZoom() < 12) { toast('もう少し地図を拡大してください'); return; }
+  try {
+    const list = await apiSearch({ q: RAMEN_Q, bbox: bboxStr(map.getBounds()), limit: 200 });
+    showCandidates(list);
+    toast(list.length ? `${list.length}件見つかりました（灰色のピン）` : 'この範囲では見つかりませんでした');
+  } catch (e) { toast(e.message); }
+}
+
+async function searchKeyword(q) {
+  const box = document.getElementById('results');
+  if (!q) { box.classList.add('hidden'); searchArea(); return; }
+  box.classList.remove('hidden');
+  box.innerHTML = '<div class="foot">検索中…</div>';
+  try {
+    const c = map.getCenter();
+    const list = await apiSearch({ q, center: `${c.lng.toFixed(6)},${c.lat.toFixed(6)}`, radius: 50000, limit: 30 });
+    box.innerHTML = list.map((p, i) => `<div class="item" data-i="${i}"><b>${findShop(poiId(p)) ? '<img class="face-mini" src="face.svg" alt="来訪済み">' : ''}${esc(norm(p.name))}</b><small>${esc(norm(p.address))}</small></div>`).join('')
+      + `<div class="foot"><span>${list.length ? '' : '見つかりませんでした。'}見つからない店は地図を長押しで登録</span><button class="btn sub" id="closeRes">閉じる</button></div>`;
+    box.querySelectorAll('.item').forEach(el => el.onclick = e => {
+      const p = list[+el.dataset.i];
+      box.classList.add('hidden');
+      document.getElementById('q').blur();
+      showCandidates(list);
+      map.setView([p.lat, p.lng], 17);
+      const id = poiId(p);
+      if (findShop(id)) { openDetail(id, { x: e.clientX, y: e.clientY }); return; }
+      candLayer.eachLayer(m => { if (m.poiId === id) m.openPopup(); });
+    });
+    box.querySelector('#closeRes').onclick = () => box.classList.add('hidden');
+  } catch (e) { box.innerHTML = `<div class="foot">${esc(e.message)}</div>`; }
+}
+
+function locate() {
+  if (!navigator.geolocation) { toast('位置情報が使えません'); return; }
+  navigator.geolocation.getCurrentPosition(
+    p => { map.setView([p.coords.latitude, p.coords.longitude], 16); searchArea(); },
+    () => toast('位置情報を取得できませんでした。設定で許可してください'),
+    { enableHighAccuracy: true, timeout: 10000 });
+}
+
+function manualAdd(latlng) {
+  const name = prompt('地図に載っていない店を登録します。\n店名を入力してください');
+  if (!name || !name.trim()) return;
+  openVisitForm({ id: 'm:' + uid(), name: name.trim(), address: '', lat: latlng.lat, lng: latlng.lng, source: 'manual' });
+}
+
+/* ---------- シート（下から出るパネル） ---------- */
+/* ポップスケール：scale 0.05 → 1.08 → 1（520ms・easeOutBack相当）
+   参考 motion-reference.takayustudio.jp の値は最大1.16。画面いっぱいのカードでは端がはみ出すため控えめにしている */
+const POP_PEAK = 1.08;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
+function popIn(wrap, origin) {
+  if (reduceMotion.matches) return;
+  const sheet = wrap.querySelector('.sheet');
+  const r = sheet.getBoundingClientRect();
+  const ox = origin ? origin.x - r.left : r.width / 2;
+  const oy = origin ? origin.y - r.top : r.height / 2;
+  sheet.style.transformOrigin = `${ox}px ${oy}px`;
+  sheet.animate([
+    { transform: 'scale(.05)', easing: 'cubic-bezier(.22,.61,.36,1)' },
+    { transform: `scale(${POP_PEAK})`, offset: 0.72, easing: 'cubic-bezier(.45,0,.55,1)' },
+    { transform: 'scale(1)' },
+  ], { duration: 520 });
+  sheet.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120 });
+  wrap.querySelector('.backdrop').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220 });
+}
+
+function popOut(wrap) {
+  wrap.classList.add('closing');
+  if (reduceMotion.matches) { wrap.remove(); return; }
+  const a = wrap.querySelector('.sheet').animate(
+    [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(.92)', opacity: 0 }],
+    { duration: 180, easing: 'cubic-bezier(.32,0,.67,0)', fill: 'forwards' });
+  wrap.querySelector('.backdrop').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: 'forwards' });
+  a.onfinish = () => wrap.remove();
+}
+
+function openSheet({ title, left, right, onRight, body, pop, mascot }) {
+  const root = document.getElementById('sheetRoot');
+  const wrap = document.createElement('div');
+  const sheetHtml = `<div class="sheet${pop ? ' pop' : ''}"><header><button class="l">${left || '閉じる'}</button><h2>${esc(title)}</h2><button class="r">${right || ''}</button></header>
+    <div class="content"></div></div>`;
+  wrap.innerHTML = `<div class="backdrop"></div>` + (pop ? `<div class="popwrap">${sheetHtml}</div>` : sheetHtml);
+  const close = () => { if (pop) popOut(wrap); else wrap.remove(); };
+  wrap.querySelector('.backdrop').onclick = close;
+  wrap.querySelector('.l').onclick = close;
+  const r = wrap.querySelector('.r');
+  if (onRight) r.onclick = () => onRight(close);
+  else if (mascot) r.outerHTML = '<span class="mascot"><img src="mascot.svg" alt=""></span>';
+  else r.style.visibility = 'hidden';
+  const content = wrap.querySelector('.content');
+  if (typeof body === 'string') content.innerHTML = body; else content.appendChild(body);
+  root.appendChild(wrap);
+  if (pop) popIn(wrap, pop.x != null ? pop : null);
+  if (mascot && pop && !reduceMotion.matches) {
+    // キャラはカードより少し遅れて、足元を軸にポンと出る
+    wrap.querySelector('.mascot img').animate([
+      { transform: 'scale(0)', offset: 0 },
+      { transform: 'scale(0)', offset: 0.4, easing: 'cubic-bezier(.22,.61,.36,1)' },
+      { transform: 'scale(1.16)', offset: 0.8, easing: 'cubic-bezier(.45,0,.55,1)' },
+      { transform: 'scale(1)' },
+    ], { duration: 700 });
+  }
+  return { close, content };
+}
+
+function viewPhoto(url) {
+  const v = document.createElement('div');
+  v.className = 'viewer';
+  v.innerHTML = `<img src="${url}">`;
+  v.onclick = () => v.remove();
+  document.body.appendChild(v);
+}
+
+/* 来訪の追加・編集フォーム */
+async function openVisitForm(shopInfo, visit) {
+  const editing = !!visit;
+  const v = visit ? { ...visit, photos: [...visit.photos] } : { id: uid(), date: today(), dishes: '', memo: '', photos: [], createdAt: Date.now() };
+  const newPhotos = []; // 今回追加した写真ID（キャンセル時に削除）
+  const body = document.createElement('div');
+  body.innerHTML = `
+    <div class="dhead"><div class="name">${esc(shopInfo.name)}</div><div class="addr">${esc(shopInfo.address)}</div></div>
+    <div class="field"><label>訪れた日</label><input type="date" id="fDate" value="${esc(v.date)}"></div>
+    <div class="field"><label>食べたもの</label><input id="fDish" placeholder="例：特製醤油らーめん、味玉、半チャーハン" value="${esc(v.dishes)}"></div>
+    <div class="field"><label>メモ</label><textarea id="fMemo" placeholder="味の感想、混み具合、次に頼みたいもの など">${esc(v.memo)}</textarea></div>
+    <div class="field"><label>写真</label><div class="photos" id="fPhotos"></div></div>`;
+  const grid = body.querySelector('#fPhotos');
+
+  async function drawPhotos() {
+    const urls = await Promise.all(v.photos.map(photoUrl));
+    grid.innerHTML = v.photos.map((id, i) => `<div class="ph" style="background-image:url('${urls[i]}')"><button class="x" data-i="${i}" aria-label="写真を外す"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button></div>`).join('')
+      + `<button class="add" type="button"><svg class="i" aria-hidden="true"><use href="#i-camera"/></svg>写真を追加</button>`;
+    grid.querySelectorAll('.x').forEach(b => b.onclick = () => { v.photos.splice(+b.dataset.i, 1); drawPhotos(); });
+    grid.querySelector('.add').onclick = () => {
+      const fi = document.getElementById('fileInput');
+      fi.value = '';
+      fi.onchange = async () => {
+        for (const f of fi.files) {
+          try {
+            const blob = await resizeImage(f);
+            const id = uid();
+            await DB.put('photos', { id, blob });
+            v.photos.push(id); newPhotos.push(id);
+          } catch { toast('写真を読み込めませんでした'); }
+        }
+        drawPhotos();
+      };
+      fi.click();
+    };
+  }
+  drawPhotos();
+
+  const sheet = openSheet({
+    title: editing ? '来訪を編集' : '来訪を記録', left: 'キャンセル', right: '保存', body,
+    onRight: async close => {
+      v.date = body.querySelector('#fDate').value || today();
+      v.dishes = body.querySelector('#fDish').value.trim();
+      v.memo = body.querySelector('#fMemo').value.trim();
+      let shop = findShop(shopInfo.id);
+      if (!shop) { shop = { ...shopInfo, visits: [], createdAt: Date.now() }; shops.push(shop); }
+      const removed = editing ? visit.photos.filter(id => !v.photos.includes(id)) : [];
+      const i = shop.visits.findIndex(x => x.id === v.id);
+      if (i >= 0) shop.visits[i] = v; else shop.visits.push(v);
+      await DB.put('shops', shop);
+      for (const id of removed) await DB.del('photos', id);
+      newPhotos.length = 0;
+      close();
+      refreshAll();
+      toast('保存しました');
+      if (!document.querySelector('#sheetRoot > div:not(.closing) .sheet')) openDetail(shop.id);
+    },
+  });
+  // キャンセル時は追加した写真を破棄
+  const cancel = async () => { for (const id of newPhotos) await DB.del('photos', id); sheet.close(); };
+  const wrap = sheet.content.closest('.sheet').parentElement;
+  wrap.querySelector('.l').onclick = cancel;
+  wrap.querySelector('.backdrop').onclick = cancel;
+}
+
+/* 店の詳細 */
+// origin: ポップの起点（タップした位置）。false なら動きなしで表示
+async function openDetail(id, origin = true) {
+  const s = findShop(id);
+  if (!s) return;
+  document.querySelectorAll('#sheetRoot > div').forEach(e => e.remove());
+  const visits = sortedVisits(s);
+  const allUrls = new Map();
+  for (const v of visits) for (const p of v.photos) allUrls.set(p, await photoUrl(p));
+
+  const body = document.createElement('div');
+  body.innerHTML = `
+    <div class="dhead"><div class="name">${esc(s.name)}</div><div class="addr">${esc(s.address || (s.source === 'manual' ? '手動登録' : ''))}</div>
+      <div class="meta"><span class="chip">最終来訪 ${fmtDate(lastVisit(s))}</span><span class="chip gray">来訪 ${s.visits.length}回</span></div></div>
+    <div class="row"><button class="btn" id="dAdd"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>来訪を追加</button><button class="btn sub" id="dMap"><svg class="i" aria-hidden="true"><use href="#i-map-trifold"/></svg>地図</button></div>
+    <div class="sec">来訪の記録</div>
+    ${visits.map(v => `<div class="visit" data-id="${v.id}">
+      <div class="vh"><b>${fmtDate(v.date)}</b><span><button class="ed">編集</button><button class="dl">削除</button></span></div>
+      ${v.dishes ? `<div class="vd"><svg class="i" aria-hidden="true"><use href="#i-bowl-food"/></svg>${esc(v.dishes)}</div>` : ''}
+      ${v.memo ? `<div class="vm">${esc(v.memo)}</div>` : ''}
+      ${v.photos.length ? `<div class="photos">${v.photos.map(p => `<div class="ph" data-p="${p}" style="background-image:url('${allUrls.get(p)}')"></div>`).join('')}</div>` : ''}
+    </div>`).join('')}
+    <div class="row" style="margin-top:24px"><button class="btn danger" id="dDel">このお店を削除</button></div>`;
+
+  const sheet = openSheet({ title: s.name, body, pop: origin, mascot: true });
+  body.querySelector('#dAdd').onclick = () => { sheet.close(); openVisitForm(s); };
+  body.querySelector('#dMap').onclick = () => {
+    sheet.close(); switchTab('mapView');
+    map.setView([s.lat, s.lng], 17);
+    visitedLayer.eachLayer(m => { const ll = m.getLatLng(); if (ll.lat === s.lat && ll.lng === s.lng) m.openPopup(); });
+  };
+  body.querySelectorAll('.ph[data-p]').forEach(el => el.onclick = () => viewPhoto(allUrls.get(el.dataset.p)));
+  body.querySelectorAll('.visit').forEach(el => {
+    const v = s.visits.find(x => x.id === el.dataset.id);
+    el.querySelector('.ed').onclick = () => { sheet.close(); openVisitForm(s, v); };
+    el.querySelector('.dl').onclick = async () => {
+      if (!confirm(`${fmtDate(v.date)} の記録を削除しますか？`)) return;
+      s.visits = s.visits.filter(x => x !== v);
+      for (const p of v.photos) await DB.del('photos', p);
+      if (s.visits.length) { await DB.put('shops', s); refreshAll(); openDetail(s.id, false); }
+      else { await removeShop(s); sheet.close(); }
+    };
+  });
+  body.querySelector('#dDel').onclick = async () => {
+    if (!confirm(`「${s.name}」と全ての来訪記録・写真を削除しますか？`)) return;
+    for (const v of s.visits) for (const p of v.photos) await DB.del('photos', p);
+    await removeShop(s); sheet.close();
+  };
+}
+
+async function removeShop(s) {
+  await DB.del('shops', s.id);
+  shops = shops.filter(x => x !== s);
+  refreshAll();
+  toast('削除しました');
+}
+
+/* ---------- 履歴カード ---------- */
+async function renderCards() {
+  const q = document.getElementById('filter').value.trim().toLowerCase();
+  const sort = document.getElementById('sort').value;
+  let list = shops.filter(s => !q || [s.name, s.address, ...s.visits.flatMap(v => [v.dishes, v.memo])].join(' ').toLowerCase().includes(q));
+  list.sort(sort === 'count' ? (a, b) => b.visits.length - a.visits.length
+    : sort === 'name' ? (a, b) => a.name.localeCompare(b.name, 'ja')
+    : (a, b) => lastVisit(b).localeCompare(lastVisit(a)));
+
+  const total = shops.reduce((n, s) => n + s.visits.length, 0);
+  document.getElementById('stats').textContent = shops.length ? `${shops.length}店・のべ${total}回` : '';
+
+  const el = document.getElementById('cards');
+  if (!shops.length) {
+    el.innerHTML = `<div class="empty"><img class="empty-mascot" src="mascot.svg" alt=""><br>まだ記録がありません。<br>マップで近くのお店を探して、<br>灰色のピンから記録しましょう。</div>`;
+    return;
+  }
+  const html = await Promise.all(list.map(async s => {
+    const vs = sortedVisits(s), latest = vs[0];
+    const ph = vs.flatMap(v => v.photos)[0];
+    const url = ph ? await photoUrl(ph) : '';
+    return `<div class="card" data-id="${esc(s.id)}">
+      <div class="thumb" ${url ? `style="background-image:url('${url}')"` : ''}>${url ? '' : '<img class="thumb-mascot" src="mascot.svg" alt="">'}</div>
+      <div class="body">
+        <div class="name">${esc(s.name)}</div>
+        <div class="area">${esc([s.address].filter(Boolean).join(''))}</div>
+        <div class="meta"><span class="chip">最終来訪 ${fmtDate(latest.date)}</span><span class="chip gray">${s.visits.length}回</span></div>
+        ${latest.dishes ? `<div class="dish"><svg class="i" aria-hidden="true"><use href="#i-bowl-food"/></svg>${esc(latest.dishes)}</div>` : ''}
+        ${latest.memo ? `<div class="memo">${esc(latest.memo)}</div>` : ''}
+      </div></div>`;
+  }));
+  el.innerHTML = html.join('') || '<div class="empty">該当するお店がありません</div>';
+  el.querySelectorAll('.card').forEach(c => c.onclick = e => openDetail(c.dataset.id, { x: e.clientX, y: e.clientY }));
+}
+
+function refreshAll() { renderVisitedPins(); renderCards(); }
+
+/* ---------- バックアップ ---------- */
+const blobToDataUrl = b => new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); });
+
+async function exportData() {
+  toast('バックアップを作成中…');
+  const photos = {};
+  for (const rec of await DB.all('photos')) photos[rec.id] = await blobToDataUrl(rec.blob);
+  const json = JSON.stringify({ app: 'ramen-log', version: 1, exportedAt: new Date().toISOString(), shops, photos });
+  const name = `ramen-log-${today()}.json`;
+  const file = new File([json], name, { type: 'application/json' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: name }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(file); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+async function importData(file) {
+  try {
+    const data = JSON.parse(await file.text());
+    if (data.app !== 'ramen-log') throw new Error();
+    if (!confirm(`${data.shops.length}店の記録を読み込みます。同じ店の記録は上書きされます。よろしいですか？`)) return;
+    for (const [id, url] of Object.entries(data.photos || {})) {
+      const blob = await (await fetch(url)).blob();
+      await DB.put('photos', { id, blob });
+    }
+    for (const s of data.shops) await DB.put('shops', s);
+    shops = await DB.all('shops');
+    refreshAll();
+    toast('読み込みました');
+  } catch { toast('バックアップファイルを読み込めませんでした'); }
+}
+
+function openMenu() {
+  const body = document.createElement('div');
+  body.className = 'menu';
+  body.innerHTML = `
+    <button class="btn block" id="mExp"><svg class="i" aria-hidden="true"><use href="#i-download-simple"/></svg>バックアップを書き出す</button>
+    <button class="btn sub block" id="mImp"><svg class="i" aria-hidden="true"><use href="#i-upload-simple"/></svg>バックアップから復元</button>
+    <p class="note">記録と写真はこのiPhoneの中だけに保存されます。機種変更やSafariのデータ削除に備えて、ときどきバックアップを「ファイル」アプリやiCloud Driveに保存してください。</p>
+    <p class="note">地図: 国土地理院 ／ 店舗データ: <a href="https://openpoiapi.com/attribution.html" target="_blank">OpenPOI API</a>（Overture Maps Foundation ほか）</p>`;
+  const sh = openSheet({ title: 'メニュー', body });
+  body.querySelector('#mExp').onclick = () => { sh.close(); exportData(); };
+  body.querySelector('#mImp').onclick = () => {
+    const fi = document.getElementById('importInput');
+    fi.value = '';
+    fi.onchange = () => { sh.close(); if (fi.files[0]) importData(fi.files[0]); };
+    fi.click();
+  };
+}
+
+/* ---------- タブ ---------- */
+function switchTab(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('hidden', v.id !== id));
+  document.querySelectorAll('.tabbar button').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+  if (id === 'mapView') setTimeout(() => map.invalidateSize(), 0);
+}
+
+/* ---------- 起動 ---------- */
+(async () => {
+  await DB.open();
+  shops = await DB.all('shops');
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  initMap();
+  refreshAll();
+
+  document.querySelectorAll('.tabbar button').forEach(b => b.onclick = () => switchTab(b.dataset.tab));
+  document.getElementById('searchForm').onsubmit = e => { e.preventDefault(); document.getElementById('q').blur(); searchKeyword(document.getElementById('q').value.trim()); };
+  document.getElementById('btnArea').onclick = searchArea;
+  document.getElementById('btnLocate').onclick = locate;
+  document.getElementById('btnMenu').onclick = openMenu;
+  document.getElementById('filter').oninput = renderCards;
+  document.getElementById('sort').onchange = renderCards;
+
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>
