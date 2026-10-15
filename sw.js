@@ -1,5 +1,5 @@
 // アプリ本体をキャッシュして、電波が弱い店内でも起動できるようにする
-const CACHE = 'ramen-log-v4';
+const CACHE = 'ramen-log-v5';
 const SHELL = [
   './',
   'index.html',
