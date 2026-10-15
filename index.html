@@ -20,16 +20,26 @@
 <style>
 /* Eureka! と同じ世界観：生成りのドット背景、ぷっくりした立体ボタン、丸ゴシック */
 :root{
+  /* テーマカラー：L はライト、D はダーク用。下の data-color で色ごとに入れ替える */
+  --acL:#e07b22; --acL-deep:#a8561a; --acL-text:#b8621a; --acL-weak:#fdebe1; --acD:#f39a3d; --acD-deep:#a85a10; --acD-text:#f39a3d;
   --bg:#fff6e9; --bg-dot:#f7e4c9; --surface:#fff; --text:#2d3246; --ink2:#4a4c5c; --muted:#867868; --faint:#bcae9e;
   --line:#f1dfc6; --edge:#ecd2ae;
-  --accent:#e07b22; --accent-deep:#a8561a; --on-accent:#fff; --accent-weak:#fdebe1; --accent-text:#b8621a;
+  --accent:var(--acL); --accent-deep:var(--acL-deep); --on-accent:#fff; --accent-weak:var(--acL-weak); --accent-text:var(--acL-text);
   --negi:#6fa35f; --negi-deep:#4c7a40; --naruto:#f3a5b2; --cand:#a59a8c; --track:#f6e6cf; --bubble:#fff;
   --tab-h:66px; --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
   --out-cubic:cubic-bezier(.33,1,.68,1); --out-back:cubic-bezier(.34,1.56,.64,1); --inout-sine:cubic-bezier(.37,0,.63,1);
 }
+:root[data-color="shoyu"]{--acL:#8a5a3b; --acL-deep:#5e3a24; --acL-text:#7a4a2e; --acL-weak:#f1e4da; --acD:#d6a57f; --acD-deep:#7a5038; --acD-text:#deb08c}
+:root[data-color="shio"]{--acL:#2f86b0; --acL-deep:#1f5f80; --acL-text:#236f96; --acL-weak:#e3f0f6; --acD:#6fb9db; --acD-deep:#2a6582; --acD-text:#86c6e4}
+:root[data-color="naruto"]{--acL:#d9607a; --acL-deep:#a23e55; --acL-text:#b8455f; --acL-weak:#fbe6eb; --acD:#f39aaf; --acD-deep:#a84a5e; --acD-text:#f5a8ba}
+:root[data-color="negi"]{--acL:#5a9a48; --acL-deep:#3c6d2f; --acL-text:#477d38; --acL-weak:#e8f2e1; --acD:#8cc77a; --acD-deep:#3f6634; --acD-text:#95cf83}
+/* ダーク：メニューで「ダーク」を選んだとき、または「自動」で iPhone がダークモードのとき */
+:root[data-theme="dark"]{--bg:#1d2030; --bg-dot:#262a3d; --surface:#2a2e43; --text:#fdf3e6; --ink2:#e3d9cc; --muted:#b9ab9b; --faint:#7f7b88;
+    --line:#3a3f58; --edge:#12141e; --accent:var(--acD); --accent-deep:var(--acD-deep); --on-accent:#1d2030; --accent-weak:#353a52; --accent-text:var(--acD-text);
+    --negi:#7fb36e; --negi-deep:#3f6634; --cand:#8d8494; --track:#353a52; --bubble:#353a54;}
 @media (prefers-color-scheme:dark){
-  :root{--bg:#1d2030; --bg-dot:#262a3d; --surface:#2a2e43; --text:#fdf3e6; --ink2:#e3d9cc; --muted:#b9ab9b; --faint:#7f7b88;
-    --line:#3a3f58; --edge:#12141e; --accent:#f39a3d; --accent-deep:#a85a10; --on-accent:#1d2030; --accent-weak:#353a52; --accent-text:#f39a3d;
+  :root:not([data-theme="light"]){--bg:#1d2030; --bg-dot:#262a3d; --surface:#2a2e43; --text:#fdf3e6; --ink2:#e3d9cc; --muted:#b9ab9b; --faint:#7f7b88;
+    --line:#3a3f58; --edge:#12141e; --accent:var(--acD); --accent-deep:var(--acD-deep); --on-accent:#1d2030; --accent-weak:#353a52; --accent-text:var(--acD-text);
     --negi:#7fb36e; --negi-deep:#3f6634; --cand:#8d8494; --track:#353a52; --bubble:#353a54;}
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -228,12 +238,30 @@ textarea{min-height:96px;resize:vertical}
 .viewer{position:fixed;inset:0;z-index:4000;background:#000;display:flex;align-items:center;justify-content:center}
 .viewer img{max-width:100%;max-height:100%}
 .menu .btn{margin-bottom:12px}
+.menu .sec:first-child{margin-top:0}
+.seg3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.seg3 .pill{justify-content:center}
+.swatches{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:6px}
+.sw{border:2px solid var(--line);background:var(--surface);border-radius:16px;padding:9px 2px 6px;display:flex;flex-direction:column;align-items:center;gap:5px;
+  font-size:12px;font-weight:700;color:var(--ink2);box-shadow:0 3px 0 var(--edge)}
+.sw i{width:30px;height:30px;border-radius:50%;display:block;box-shadow:inset 0 -4px 0 rgba(0,0,0,.18)}
+.sw.on{border-color:var(--accent);background:var(--accent-weak);color:var(--accent-text)}
+.share-prev{display:block;width:100%;border-radius:18px;border:2px solid var(--line);box-shadow:0 4px 0 var(--edge);background:var(--surface)}
+.toggles{display:flex;gap:18px;flex-wrap:wrap;margin:14px 4px}
+.toggles label{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;color:var(--ink2)}
+.toggles input{width:22px;height:22px;padding:0;margin:0;box-shadow:none;accent-color:var(--accent)}
+.visit .vh button.sh{background:var(--accent-weak);color:var(--accent-text)}
 .note{font-size:13px;color:var(--muted);line-height:1.8}
 
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
 </style>
+<script>
+try { const t = JSON.parse(localStorage.getItem('ramen-theme')) || {};
+  if (t.mode === 'light' || t.mode === 'dark') document.documentElement.dataset.theme = t.mode;
+  if (t.color && t.color !== 'miso') document.documentElement.dataset.color = t.color; } catch (e) {}
+</script>
 </head>
 <body>
 <!-- アイコン: Phosphor Icons (MIT) https://phosphoricons.com -->
@@ -250,6 +278,7 @@ textarea{min-height:96px;resize:vertical}
   <symbol id="i-camera" viewBox="0 0 256 256"><path d="M208,56H180.28L166.65,35.56A8,8,0,0,0,160,32H96a8,8,0,0,0-6.65,3.56L75.71,56H48A24,24,0,0,0,24,80V192a24,24,0,0,0,24,24H208a24,24,0,0,0,24-24V80A24,24,0,0,0,208,56Zm8,136a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V80a8,8,0,0,1,8-8H80a8,8,0,0,0,6.66-3.56L100.28,48h55.43l13.63,20.44A8,8,0,0,0,176,72h32a8,8,0,0,1,8,8ZM128,88a44,44,0,1,0,44,44A44.05,44.05,0,0,0,128,88Zm0,72a28,28,0,1,1,28-28A28,28,0,0,1,128,160Z"/></symbol>
   <symbol id="i-download-simple" viewBox="0 0 256 256"><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z"/></symbol>
   <symbol id="i-upload-simple" viewBox="0 0 256 256"><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0ZM93.66,77.66,120,51.31V144a8,8,0,0,0,16,0V51.31l26.34,26.35a8,8,0,0,0,11.32-11.32l-40-40a8,8,0,0,0-11.32,0l-40,40A8,8,0,0,0,93.66,77.66Z"/></symbol>
+  <symbol id="i-export" viewBox="0 0 256 256"><path d="M216,112v96a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V112A16,16,0,0,1,56,96H80a8,8,0,0,1,0,16H56v96H200V112H176a8,8,0,0,1,0-16h24A16,16,0,0,1,216,112ZM93.66,69.66,120,43.31V136a8,8,0,0,0,16,0V43.31l26.34,26.35a8,8,0,0,0,11.32-11.32l-40-40a8,8,0,0,0-11.32,0l-40,40A8,8,0,0,0,93.66,69.66Z"/></symbol>
   <symbol id="i-bowl-food" viewBox="0 0 256 256"><path d="M224,104h-8.37a88,88,0,0,0-175.26,0H32a8,8,0,0,0-8,8,104.35,104.35,0,0,0,56,92.28V208a16,16,0,0,0,16,16h64a16,16,0,0,0,16-16v-3.72A104.35,104.35,0,0,0,232,112,8,8,0,0,0,224,104Zm-24.46,0H148.12a71.84,71.84,0,0,1,41.27-29.57A71.45,71.45,0,0,1,199.54,104ZM173.48,56.23q2.75,2.25,5.27,4.75a87.92,87.92,0,0,0-49.15,43H100.1A72.26,72.26,0,0,1,168,56C169.83,56,171.66,56.09,173.48,56.23ZM128,40a71.87,71.87,0,0,1,19,2.57A88.36,88.36,0,0,0,83.33,104H56.46A72.08,72.08,0,0,1,128,40Zm36.66,152A8,8,0,0,0,160,199.3V208H96v-8.7A8,8,0,0,0,91.34,192a88.29,88.29,0,0,1-51-72H215.63A88.29,88.29,0,0,1,164.66,192Z"/></symbol>
 </svg>
 
@@ -660,9 +689,10 @@ async function openDetail(id, origin = true) {
     <div class="dhead"><div class="name">${esc(s.name)}</div><div class="addr">${esc(s.address || (s.source === 'manual' ? '手動登録' : ''))}</div>
       <div class="meta"><span class="chip">最終来訪 ${fmtDate(lastVisit(s))}</span><span class="chip gray">来訪 ${s.visits.length}回</span></div></div>
     <div class="row"><button class="btn" id="dAdd"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>来訪を追加</button><button class="btn sub" id="dMap"><svg class="i" aria-hidden="true"><use href="#i-map-trifold"/></svg>地図</button></div>
+    <button class="btn sub block" id="dShare"><svg class="i" aria-hidden="true"><use href="#i-export"/></svg>カードを画像にしてシェア</button>
     <div class="sec">来訪の記録</div>
     ${visits.map(v => `<div class="visit" data-id="${v.id}">
-      <div class="vh"><b>${fmtDate(v.date)}</b><span><button class="ed">編集</button><button class="dl">削除</button></span></div>
+      <div class="vh"><b>${fmtDate(v.date)}</b><span><button class="sh">シェア</button><button class="ed">編集</button><button class="dl">削除</button></span></div>
       ${v.dishes ? `<div class="vd"><svg class="i" aria-hidden="true"><use href="#i-bowl-food"/></svg>${esc(v.dishes)}</div>` : ''}
       ${v.memo ? `<div class="vm">${esc(v.memo)}</div>` : ''}
       ${v.photos.length ? `<div class="photos">${v.photos.map(p => `<div class="ph" data-p="${p}" style="background-image:url('${allUrls.get(p)}')"></div>`).join('')}</div>` : ''}
@@ -671,6 +701,7 @@ async function openDetail(id, origin = true) {
 
   const sheet = openSheet({ title: s.name, body, pop: origin, mascot: true });
   body.querySelector('#dAdd').onclick = () => { sheet.close(); openVisitForm(s); };
+  body.querySelector('#dShare').onclick = () => openShare(s, visits[0]);
   body.querySelector('#dMap').onclick = () => {
     sheet.close(); switchTab('mapView');
     map.setView([s.lat, s.lng], 17);
@@ -679,6 +710,7 @@ async function openDetail(id, origin = true) {
   body.querySelectorAll('.ph[data-p]').forEach(el => el.onclick = () => viewPhoto(allUrls.get(el.dataset.p)));
   body.querySelectorAll('.visit').forEach(el => {
     const v = s.visits.find(x => x.id === el.dataset.id);
+    el.querySelector('.sh').onclick = () => openShare(s, v);
     el.querySelector('.ed').onclick = () => { sheet.close(); openVisitForm(s, v); };
     el.querySelector('.dl').onclick = async () => {
       if (!confirm(`${fmtDate(v.date)} の記録を削除しますか？`)) return;
@@ -758,6 +790,7 @@ function heroLine() {
   const latest = shops.reduce((a, s) => (lastVisit(s) > a ? lastVisit(s) : a), '');
   if (latest === today()) return 'きょうの一杯、どうだった？';
   if (m >= 3) return `今月は${m}杯！いいペース！`;
+  if (m === 1) return '今月の1杯目、いいスタート！';
   if (m > 0) return `今月は${m}杯目まで来たね`;
   return pick(['次はどこ行く？', 'そろそろラーメンの気分…？', '行きたいお店、さがしてみよ！']);
 }
@@ -824,6 +857,197 @@ async function renderCards(anim = false) {
 
 function refreshAll() { renderVisitedPins(); renderCards(); }
 
+/* ---------- テーマ(明るさとメインの色)---------- */
+const THEMES = [
+  { id: 'miso', name: 'みそ', c: '#e07b22' },
+  { id: 'shoyu', name: 'しょうゆ', c: '#8a5a3b' },
+  { id: 'shio', name: 'しお', c: '#2f86b0' },
+  { id: 'naruto', name: 'なると', c: '#d9607a' },
+  { id: 'negi', name: 'ねぎ', c: '#5a9a48' },
+];
+function loadTheme() { try { return JSON.parse(localStorage.getItem('ramen-theme')) || {}; } catch { return {}; } }
+function saveTheme(t) { try { localStorage.setItem('ramen-theme', JSON.stringify(t)); } catch {} }
+// <html> に data-theme(light / dark)と data-color(色の名前)を付けると、CSS 側で色が入れ替わる
+function applyTheme(t = loadTheme()) {
+  const r = document.documentElement;
+  if (t.mode === 'light' || t.mode === 'dark') r.dataset.theme = t.mode; else delete r.dataset.theme;
+  if (t.color && t.color !== 'miso') r.dataset.color = t.color; else delete r.dataset.color;
+  document.querySelector('meta[name="theme-color"]').content = getComputedStyle(r).getPropertyValue('--bg').trim();
+}
+function themeSection(body) {
+  const t = loadTheme();
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `
+    <div class="sec">画面の明るさ</div>
+    <div class="seg3">${[['auto', '自動'], ['light', 'ライト'], ['dark', 'ダーク']].map(([k, n]) =>
+      `<button class="pill${(t.mode || 'auto') === k ? ' on' : ''}" data-mode="${k}">${n}</button>`).join('')}</div>
+    <div class="sec">テーマカラー</div>
+    <div class="swatches">${THEMES.map(c =>
+      `<button class="sw${(t.color || 'miso') === c.id ? ' on' : ''}" data-color="${c.id}"><i style="background:${c.c}"></i>${c.name}</button>`).join('')}</div>
+    <p class="note">「自動」は iPhone のダークモードの設定に合わせます。</p>`;
+  wrap.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
+    const cur = loadTheme(); cur.mode = b.dataset.mode; saveTheme(cur); applyTheme(cur);
+    wrap.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x === b));
+  });
+  wrap.querySelectorAll('[data-color]').forEach(b => b.onclick = () => {
+    const cur = loadTheme(); cur.color = b.dataset.color; saveTheme(cur); applyTheme(cur);
+    wrap.querySelectorAll('[data-color]').forEach(x => x.classList.toggle('on', x === b));
+    replay(b, 'jelly');
+  });
+  body.prepend(wrap);
+}
+
+/* ---------- シェア画像(カードを画像にして SNS などに共有)---------- */
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function rrect(g, x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+// 決めた幅に収まるように行を分ける。入りきらない分は「…」にする
+function wrapLines(g, text, maxW, maxLines) {
+  const lines = []; let cur = '';
+  for (const ch of String(text).replace(/\s*\n\s*/g, ' ')) {
+    if (g.measureText(cur + ch).width > maxW) { lines.push(cur); cur = ch; if (lines.length === maxLines) break; }
+    else cur += ch;
+  }
+  if (lines.length < maxLines && cur) lines.push(cur);
+  else if (lines.length === maxLines && cur) {
+    let last = lines[maxLines - 1];
+    while (last && g.measureText(last + '…').width > maxW) last = last.slice(0, -1);
+    lines[maxLines - 1] = last + '…';
+  }
+  return lines;
+}
+function drawSprite(g, x, y, px, expr = 'happy') {
+  const grid = SPRITE.map(r => r.split(''));
+  for (const [ex, ey, c] of EXPR[expr] || []) grid[ey][ex] = c;
+  grid.forEach((row, ry) => row.forEach((c, rx) => { if (c !== '.') { g.fillStyle = PAL[c]; g.fillRect(x + rx * px, y + ry * px, px + .5, px + .5); } }));
+}
+function drawIcon(g, id, x, y, size, color) {
+  const d = document.querySelector(`#${id} path`).getAttribute('d');
+  g.save(); g.translate(x, y); g.scale(size / 256, size / 256); g.fillStyle = color; g.fill(new Path2D(d)); g.restore();
+}
+const loadImage = url => new Promise((ok, ng) => { const im = new Image(); im.onload = () => ok(im); im.onerror = ng; im.src = url; });
+
+async function makeShareImage(s, v, opt) {
+  const W = 1080, H = 1350, F = '"Zen Maru Gothic","Hiragino Maru Gothic ProN",sans-serif', N = 'Fredoka,"Zen Maru Gothic",sans-serif';
+  const C = { bg: cssVar('--bg'), dot: cssVar('--bg-dot'), surface: cssVar('--surface'), text: cssVar('--text'), muted: cssVar('--muted'), line: cssVar('--line'),
+    edge: cssVar('--edge'), accent: cssVar('--accent'), deep: cssVar('--accent-deep'), weak: cssVar('--accent-weak'), atext: cssVar('--accent-text'), negi: cssVar('--negi'), negiDeep: cssVar('--negi-deep') };
+  const order = [...s.visits].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt);
+  const nth = order.indexOf(v) + 1;
+  const texts = [s.name, s.address, v.dishes, v.memo, fmtDate(v.date), 'ラーメン帳杯目来訪リピート常連さん'].join('');
+  await Promise.all([document.fonts.load(`700 60px ${F}`, texts), document.fonts.load(`500 32px ${F}`, texts), document.fonts.load(`600 40px ${N}`, '0123456789/')]).catch(() => {});
+
+  // 中身は透明な下書きに描き、最後に中身の高さに合わせてカードと背景を作る
+  const layer = document.createElement('canvas'); layer.width = W; layer.height = H;
+  const g = layer.getContext('2d');
+  const cx = 60, cy = 56, cw = 960;
+  // 写真
+  const px = 92, py = 88, pw = 896, ph = 580;
+  g.save(); rrect(g, px, py, pw, ph, 36); g.clip();
+  const photoId = v.photos[0] || sortedVisits(s).flatMap(x => x.photos)[0];
+  if (photoId) {
+    const im = await loadImage(await photoUrl(photoId));
+    const k = Math.max(pw / im.width, ph / im.height);
+    g.drawImage(im, px + (pw - im.width * k) / 2, py + (ph - im.height * k) / 2, im.width * k, im.height * k);
+  } else {
+    g.fillStyle = C.weak; g.fillRect(px, py, pw, ph);
+    drawSprite(g, px + pw / 2 - 18 * 11 / 2, py + 80, 11, 'happy');
+  }
+  g.restore();
+  // 「◯杯目」と「リピート/常連さん」の札
+  g.font = `700 34px ${F}`;
+  const label = `${nth}杯目`, lw = g.measureText(label).width + 96;
+  g.fillStyle = 'rgba(0,0,0,.14)'; rrect(g, px + 22, py + 26, lw, 66, 33); g.fill();
+  g.fillStyle = '#fff'; rrect(g, px + 22, py + 22, lw, 66, 33); g.fill();
+  drawIcon(g, 'i-bowl-steam-fill', px + 40, py + 33, 44, C.accent);
+  g.fillStyle = C.accent; g.textBaseline = 'middle'; g.fillText(label, px + 92, py + 56);
+  const n = s.visits.length;
+  if (n >= 2) {
+    const tag = n >= 5 ? '常連さん' : 'リピート', tw = g.measureText(tag).width + 48, gold = n >= 5;
+    g.fillStyle = gold ? C.deep : C.negiDeep; rrect(g, px + pw - 22 - tw, py + 28, tw, 62, 31); g.fill();
+    g.fillStyle = gold ? C.accent : C.negi; rrect(g, px + pw - 22 - tw, py + 22, tw, 62, 31); g.fill();
+    g.fillStyle = '#fff'; g.fillText(tag, px + pw - 22 - tw + 24, py + 54);
+  }
+  // 店名・住所・日付
+  let y = py + ph + 72;
+  g.textBaseline = 'alphabetic'; g.fillStyle = C.text;
+  let fs = 62; g.font = `700 ${fs}px ${F}`;
+  while (g.measureText(s.name).width > 880 && fs > 40) { fs -= 2; g.font = `700 ${fs}px ${F}`; }
+  g.fillText(wrapLines(g, s.name, 880, 1)[0], 100, y);
+  y += 48;
+  if (opt.address && s.address) { g.font = `500 30px ${F}`; g.fillStyle = C.muted; g.fillText(wrapLines(g, s.address, 880, 1)[0], 102, y); y += 26; }
+  y += 22;
+  g.font = `700 32px ${F}`;
+  const dl = `${fmtDate(v.date)} 来訪`, dw = g.measureText(dl).width + 48;
+  g.fillStyle = C.weak; rrect(g, 98, y, dw, 58, 29); g.fill();
+  g.fillStyle = C.atext; g.textBaseline = 'middle'; g.fillText(dl, 122, y + 30);
+  y += 116; g.textBaseline = 'alphabetic';
+  // 食べたもの
+  if (v.dishes) {
+    g.font = `700 42px ${F}`;
+    const ls = wrapLines(g, v.dishes, 820, 2);
+    drawIcon(g, 'i-bowl-food', 98, y - 38, 48, C.accent);
+    g.fillStyle = C.text; ls.forEach((l, i) => g.fillText(l, 162, y + i * 58));
+    y += ls.length * 58 + 18;
+  }
+  // メモ
+  if (opt.memo && v.memo) {
+    g.font = `500 32px ${F}`;
+    const ls = wrapLines(g, v.memo, 820, 4);
+    const mh = ls.length * 48 + 34;
+    g.fillStyle = C.bg; rrect(g, 98, y - 8, 884, mh, 24); g.fill();
+    g.fillStyle = C.text; ls.forEach((l, i) => g.fillText(l, 128, y + 38 + i * 48));
+    y += mh;
+  }
+  // 仕上げ：背景(ドット柄)とカード(下に影を付けた立体の板)を中身の高さで作り、中身を重ねる
+  const ch = Math.max(y, py + ph + 260) + 28 - cy, FH = cy + ch + 12 + 56;
+  const c = document.createElement('canvas'); c.width = W; c.height = FH;
+  const f = c.getContext('2d');
+  f.fillStyle = C.bg; f.fillRect(0, 0, W, FH);
+  f.fillStyle = C.dot;
+  for (let dy = 18; dy < FH; dy += 44) for (let dx = 18; dx < W; dx += 44) { f.beginPath(); f.arc(dx, dy, 3.4, 0, 7); f.fill(); }
+  f.fillStyle = C.edge; rrect(f, cx, cy + 12, cw, ch, 52); f.fill();
+  f.fillStyle = C.surface; rrect(f, cx, cy, cw, ch, 52); f.fill();
+  f.lineWidth = 5; f.strokeStyle = C.line; rrect(f, cx, cy, cw, ch, 52); f.stroke();
+  f.drawImage(layer, 0, 0);
+  return new Promise(r => c.toBlob(r, 'image/png'));
+}
+
+async function openShare(s, v) {
+  const opt = { memo: true, address: true };
+  const body = document.createElement('div');
+  body.innerHTML = `
+    <img class="share-prev" alt="シェア画像のプレビュー">
+    <div class="toggles">
+      <label><input type="checkbox" id="shMemo" checked>メモも入れる</label>
+      <label><input type="checkbox" id="shAddr" checked>住所も入れる</label>
+    </div>
+    <button class="btn block" id="shGo"><svg class="i" aria-hidden="true"><use href="#i-export"/></svg>共有・保存する</button>
+    <p class="note">共有メニューの「画像を保存」で写真アプリに保存できます。SNS のアプリを選ぶと、そのまま投稿できます。</p>`;
+  const sh = openSheet({ title: 'シェア画像', body });
+  const img = body.querySelector('.share-prev');
+  let blob = null;
+  const redraw = async () => {
+    blob = await makeShareImage(s, v, opt);
+    if (img.src) URL.revokeObjectURL(img.src);
+    img.src = URL.createObjectURL(blob);
+  };
+  body.querySelector('#shMemo').onchange = e => { opt.memo = e.target.checked; redraw(); };
+  body.querySelector('#shAddr').onchange = e => { opt.address = e.target.checked; redraw(); };
+  body.querySelector('#shGo').onclick = async () => {
+    if (!blob) return;
+    const file = new File([blob], `ramen-${v.date}.png`, { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file] }); } catch (e) { if (e.name !== 'AbortError') toast('共有できませんでした'); }
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(file); a.download = file.name; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast('画像を保存しました');
+  };
+  await redraw();
+  return sh;
+}
+
 /* ---------- バックアップ ---------- */
 const blobToDataUrl = b => new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); });
 
@@ -866,6 +1090,7 @@ function openMenu() {
     <button class="btn sub block" id="mImp"><svg class="i" aria-hidden="true"><use href="#i-upload-simple"/></svg>バックアップから復元</button>
     <p class="note">記録と写真はこのiPhoneの中だけに保存されます。機種変更やSafariのデータ削除に備えて、ときどきバックアップを「ファイル」アプリやiCloud Driveに保存してください。</p>
     <p class="note">地図: 国土地理院 ／ 店舗データ: <a href="https://openpoiapi.com/attribution.html" target="_blank">OpenPOI API</a>（Overture Maps Foundation ほか）</p>`;
+  themeSection(body);
   const sh = openSheet({ title: 'メニュー', body });
   body.querySelector('#mExp').onclick = () => { sh.close(); exportData(); };
   body.querySelector('#mImp').onclick = () => {
@@ -886,6 +1111,8 @@ function switchTab(id) {
 
 /* ---------- 起動 ---------- */
 (async () => {
+  applyTheme();
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyTheme());
   await DB.open();
   shops = await DB.all('shops');
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
